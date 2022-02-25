@@ -54,8 +54,6 @@ export class MapComponent implements OnInit, AfterViewInit {
 
  ngAfterViewInit() {
     this.getSingleGrave('440d1500-d5d5-4bf9-bf06-7725cf17170f');
-    // this.getGraveExpiry('440d1500-d5d5-4bf9-bf06-7725cf17170f');
-    // this.getGravePlot('440d1500-d5d5-4bf9-bf06-7725cf17170f');
 
 
     setTimeout(() => {
@@ -178,41 +176,6 @@ getFromObservable() {
   getSingleGrave(id: string) {
     this.mapService.getAllGravesById(id).pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<any>) => {
       this._singleGrave.next(res.data);
-    })
-  }
-
-  getGraveExpiry(id: string) {
-    const secondaryStyles: any = { 'MultiPolygon': new Style({
-      stroke: new Stroke({
-        color: 'red',
-        width: 1,
-      }),
-
-      fill: new Fill({
-        color: 'rgba(255, 0, 0, 0.1)',
-      }),
-    }),
-
-    'Polygon': new Style({
-      stroke: new Stroke({
-        color: 'red',
-        lineDash: [4],
-        width: 3,
-      })}
-    )
-  }
-    this.mapService.getAllGravesById(id).pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<any>) => {
-      res.data.features.forEach((sec: any, i: any) => {
-        const date = new Date(res.data.features[i].properties.nutzungsfristende)
-        const today = new Date();
-        if(date > today) {
-          // this.expiredGrave = res.data
-          res.data.features[i].setSyle(secondaryStyles)
-        }
-        else {
-          return;
-        }
-      });
     })
   }
 
