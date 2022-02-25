@@ -32,6 +32,10 @@ export class MapComponent implements OnInit, AfterViewInit {
   unMarked?: Object;
   geojsonObject?: any;
   vectorSource?: any;
+  expiredGrave?: any;
+  expiryObject?: any;
+  emptyGraves?: any;
+  graveObject?: any;
   destroy$ = new Subject();
 
   constructor(private elementRef: ElementRef, private mapService: MapService) {
@@ -39,35 +43,65 @@ export class MapComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
+  }
+
+  async ngAfterViewInit() {
     this.getSingleGrave('440d1500-d5d5-4bf9-bf06-7725cf17170f');
+    this.getGraveExpiry('440d1500-d5d5-4bf9-bf06-7725cf17170f');
+    this.getGravePlot('440d1500-d5d5-4bf9-bf06-7725cf17170f');
+
     setTimeout(() => {
       this.geojsonObject = this.singleGrave
       console.log(this.geojsonObject)
-    }, 5000)
-  }
+    }, 3000)
 
-  ngAfterViewInit() {
-    // this.getSingleGrave('440d1500-d5d5-4bf9-bf06-7725cf17170f');
+    setTimeout(() => {
+      this.expiryObject = this.expiredGrave
+      console.log(this.geojsonObject)
+    }, 3000)
 
+    setTimeout(() => {
+      this.graveObject = this.emptyGraves;
+      console.log(this.graveObject)
+    }, 3000)
 
-  setTimeout(() => {
-    const styles: any = { 'MultiPolygon': new Style({
-      stroke: new Stroke({
-        color: 'yellow',
-        width: 1,
+    setTimeout(() => {
+      const styles: any = { 'MultiPolygon': new Style({
+        stroke: new Stroke({
+          color: 'yellow',
+          width: 1,
+        }),
+        fill: new Fill({
+          color: 'rgba(255, 255, 0, 0.1)',
+        }),
       }),
-      fill: new Fill({
-        color: 'rgba(255, 255, 0, 0.1)',
+      'Polygon': new Style({
+        stroke: new Stroke({
+          color: 'blue',
+          lineDash: [4],
+          width: 3,
+        })}
+      )
+    }
+
+    const secondStyles: any = {
+      'MultiPolygon': new Style({
+        stroke: new Stroke({
+          color: 'red',
+          width: 1,
+        }),
+        fill: new Fill({
+          color: 'rgba(255, 0, 0, 0.1)',
+        }),
       }),
-    }),
-    'Polygon': new Style({
-      stroke: new Stroke({
-        color: 'blue',
-        lineDash: [4],
-        width: 3,
-      })}
-    )
-  }
+      'Polygon': new Style({
+        stroke: new Stroke({
+          color: 'red',
+          lineDash: [4],
+          width: 3,
+        })}
+      )
+    }
 
   const projection = new Projection({
     code: 'EPSG:25832',
@@ -104,7 +138,7 @@ export class MapComponent implements OnInit, AfterViewInit {
     });
     var extent = vectorLayer.getSource().getExtent();
     this.map.getView().fit(extent);
-  }, 5000)
+  }, 3000)
 
 
 
@@ -122,14 +156,37 @@ export class MapComponent implements OnInit, AfterViewInit {
     })
   }
 
+  getGraveExpiry(id: string) {
+    this.mapService.getAllGravesById(id).pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<any>) => {
+      res.data.features.forEach((sec: any, i: any) => {
+        const date = new Date(res.data.features[i].properties.nutzungsfristende)
+        const today = new Date();
+        if(date > today) {
+          this.expiredGrave = res.data
+        }
+        else {
+          return;
+        }
+      });
+    })
+  }
+
   getGravePlot(id: string) {
-    this.mapService.getAllGravePlots(id).pipe(takeUntil(this.destroy$)).subscribe((res:ApiResponse<MapModel>) => {
-      this.gravePlot = res.data;
+    this.mapService.getAllGravePlots(id).pipe(takeUntil(this.destroy$)).subscribe((res:ApiResponse<any>) => {
+      res.data.features.forEach((sec: any, i: any) => {
+        const emptyGrave = res.data.features[i].properties.verstorbene;
+        if(emptyGrave !== null) {
+          this.emptyGraves = res.data;
+        }
+        else {
+          return
+        }
+      })
     })
   }
 
   getUnmarked() {
-    this.mapService.getUnmarkedGrave().pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<MapModel>) => {
+    this.mapService.getUnmarkedGrave().pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<any>) => {
       this.unMarked = res.data;
     })
   }
