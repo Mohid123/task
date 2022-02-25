@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, Input, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
 import { MapModel } from 'src/app/models/map.model';
 import { ApiResponse } from 'src/app/models/repsonse.model';
 import { MapService } from 'src/app/services/map.service';
@@ -11,7 +11,7 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import GeoJSON from 'ol/format/GeoJSON';
 import { constants } from '../../app.constants';
-import { Subject, takeUntil } from 'rxjs';
+import { BehaviorSubject, fromEvent, Subject, Subscription, takeUntil } from 'rxjs';
 import Style from 'ol/style/Style';
 import Stroke from 'ol/style/Stroke';
 import Fill from 'ol/style/Fill';
@@ -31,12 +31,19 @@ export class MapComponent implements OnInit, AfterViewInit {
   gravePlot?: Object;
   unMarked?: Object;
   geojsonObject?: any;
+  _singleGrave = new BehaviorSubject({});
+  _singlegrave$ = this._singleGrave.asObservable();
   vectorSource?: any;
   expiredGrave?: any;
   expiryObject?: any;
   emptyGraves?: any;
   graveObject?: any;
   destroy$ = new Subject();
+
+  @ViewChild('element', { static: false })
+  element!: ElementRef;
+
+  clickedElement: Subscription = new Subscription();
 
   constructor(private elementRef: ElementRef, private mapService: MapService) {
 
@@ -45,27 +52,14 @@ export class MapComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
   }
 
-  async ngAfterViewInit() {
+ ngAfterViewInit() {
     this.getSingleGrave('440d1500-d5d5-4bf9-bf06-7725cf17170f');
-    this.getGraveExpiry('440d1500-d5d5-4bf9-bf06-7725cf17170f');
-    this.getGravePlot('440d1500-d5d5-4bf9-bf06-7725cf17170f');
+    // this.getGraveExpiry('440d1500-d5d5-4bf9-bf06-7725cf17170f');
+    // this.getGravePlot('440d1500-d5d5-4bf9-bf06-7725cf17170f');
+
 
     setTimeout(() => {
-      this.geojsonObject = this.singleGrave
-      console.log(this.geojsonObject)
-    }, 3000)
 
-    setTimeout(() => {
-      this.expiryObject = this.expiredGrave
-      console.log(this.geojsonObject)
-    }, 3000)
-
-    setTimeout(() => {
-      this.graveObject = this.emptyGraves;
-      console.log(this.graveObject)
-    }, 3000)
-
-    setTimeout(() => {
       const styles: any = { 'MultiPolygon': new Style({
         stroke: new Stroke({
           color: 'yellow',
@@ -84,25 +78,6 @@ export class MapComponent implements OnInit, AfterViewInit {
       )
     }
 
-    const secondStyles: any = {
-      'MultiPolygon': new Style({
-        stroke: new Stroke({
-          color: 'red',
-          width: 1,
-        }),
-        fill: new Fill({
-          color: 'rgba(255, 0, 0, 0.1)',
-        }),
-      }),
-      'Polygon': new Style({
-        stroke: new Stroke({
-          color: 'red',
-          lineDash: [4],
-          width: 3,
-        })}
-      )
-    }
-
   const projection = new Projection({
     code: 'EPSG:25832',
     getPointResolution: (r) => {
@@ -110,38 +85,88 @@ export class MapComponent implements OnInit, AfterViewInit {
     },
     units: 'm'
   })
+
   const styleFunction = function (feature: any) {
-    return styles[feature.getGeometry().getType()];
+    // return styles[feature.getGeometry().getType()];
+    const customStyle = feature.get('secondaryStyles');
+    return customStyle || styles[feature.getGeometry().getType()];
   };
-    this.vectorSource = new VectorSource({
-      features: new GeoJSON().readFeatures(this.geojsonObject, { featureProjection: 'EPSG:3857' }),
 
-    });
-    const vectorLayer = new VectorLayer({
-      source: this.vectorSource,
-      style: styleFunction,
-    });
+  this.getFromObservable();
 
-    this.map = new Map({
-      view: new View({
-        center: [0, 0],
-        zoom: 1,
-        // projection: 'EPSG:25832',
+  this.vectorSource = new VectorSource({
+    features: new GeoJSON().readFeatures(this.geojsonObject, { featureProjection: 'EPSG:3857' })
+  });
+
+  const vectorLayer = new VectorLayer({
+    source: this.vectorSource,
+    style: styleFunction,
+  });
+
+  this.map = new Map({
+    view: new View({
+      center: [0, 0],
+      zoom: 1,
+      // projection: 'EPSG:25832',
+    }),
+    layers: [
+      new TileLayer({
+        source: new OSM(),
       }),
-      layers: [
-        new TileLayer({
-          source: new OSM(),
-        }),
-        vectorLayer
-      ],
-      target: 'ol-map'
-    });
+      vectorLayer
+    ],
+    target: 'ol-map'
+  });
+
     var extent = vectorLayer.getSource().getExtent();
     this.map.getView().fit(extent);
-  }, 3000)
 
+  }, 3000);
 
+  this.clickedElement = fromEvent(this.element.nativeElement, 'click').subscribe((event: any) => {
+    const secondaryStyles: any = { 'MultiPolygon': new Style({
+      stroke: new Stroke({
+        color: 'red',
+        width: 1,
+      }),
 
+      fill: new Fill({
+        color: 'rgba(255, 0, 0, 0.1)',
+      }),
+    }),
+
+    'Polygon': new Style({
+      stroke: new Stroke({
+        color: 'red',
+        lineDash: [4],
+        width: 3,
+      })}
+    )
+  }
+  this.mapService.getAllGravesById('440d1500-d5d5-4bf9-bf06-7725cf17170f').pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<any>) => {
+    res.data.features.forEach((sec: any, i: any) => {
+      debugger
+      const date = new Date(res.data.features[i].properties.nutzungsfristende)
+      const today = new Date();
+      if(date > today) {
+        // this.expiredGrave = res.data
+        let features = this.vectorSource.getFeatures();
+        features[i].set('secondaryStyles', secondaryStyles)
+      }
+      else {
+        return;
+      }
+    });
+  })
+  // this.getGraveExpiry('440d1500-d5d5-4bf9-bf06-7725cf17170f')
+})
+
+}
+
+getFromObservable() {
+  this._singlegrave$.subscribe((data) => {
+    this.geojsonObject = data;
+  })
 }
 
   getGraves() {
@@ -152,17 +177,37 @@ export class MapComponent implements OnInit, AfterViewInit {
 
   getSingleGrave(id: string) {
     this.mapService.getAllGravesById(id).pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<any>) => {
-      this.singleGrave = res.data;
+      this._singleGrave.next(res.data);
     })
   }
 
   getGraveExpiry(id: string) {
+    const secondaryStyles: any = { 'MultiPolygon': new Style({
+      stroke: new Stroke({
+        color: 'red',
+        width: 1,
+      }),
+
+      fill: new Fill({
+        color: 'rgba(255, 0, 0, 0.1)',
+      }),
+    }),
+
+    'Polygon': new Style({
+      stroke: new Stroke({
+        color: 'red',
+        lineDash: [4],
+        width: 3,
+      })}
+    )
+  }
     this.mapService.getAllGravesById(id).pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<any>) => {
       res.data.features.forEach((sec: any, i: any) => {
         const date = new Date(res.data.features[i].properties.nutzungsfristende)
         const today = new Date();
         if(date > today) {
-          this.expiredGrave = res.data
+          // this.expiredGrave = res.data
+          res.data.features[i].setSyle(secondaryStyles)
         }
         else {
           return;

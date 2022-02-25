@@ -1,16 +1,17 @@
 :host {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 80vh;
 }
 
 header {
   background-color: rgb(163, 163, 235);
-  padding: 2em;
+  padding: 1.2em;
 }
 
 header .title {
   font-size: 28px;
+  text-align: center;
 }
 
 main {

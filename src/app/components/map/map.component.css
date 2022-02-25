@@ -3,3 +3,15 @@
   /* height: 100%; */
   display: block;
 }
+
+.btn {
+padding: 1.1em;
+text-align: center;
+background-color: red;
+color: white;
+border-radius: 12px;
+font-size: 16px;
+position: absolute;
+top: 83%;
+left: 45%;
+}
