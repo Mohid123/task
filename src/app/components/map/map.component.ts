@@ -189,7 +189,7 @@ export class MapComponent implements OnInit, AfterViewInit {
       });
     })
   })
-}
+  }
 
   getGraves() {
     this.mapService.getAllGraves().pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<MapModel>) => {
