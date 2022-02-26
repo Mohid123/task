@@ -38,6 +38,10 @@ export class MapComponent implements OnInit, AfterViewInit {
   expiryObject?: any;
   emptyGraves?: any;
   graveObject?: any;
+  styles?: any;
+  secondaryStyles?: any;
+  styleFunction?: any;
+  selected: any;
   destroy$ = new Subject();
 
   @ViewChild('element', { static: false })
@@ -58,7 +62,7 @@ export class MapComponent implements OnInit, AfterViewInit {
 
     setTimeout(() => {
 
-      const styles: any = { 'MultiPolygon': new Style({
+    const styles: any = { 'MultiPolygon': new Style({
         stroke: new Stroke({
           color: 'yellow',
           width: 1,
@@ -76,6 +80,26 @@ export class MapComponent implements OnInit, AfterViewInit {
       )
     }
 
+    const secondaryStyles: any = { 'MultiPolygon': new Style({
+      stroke: new Stroke({
+        color: 'red',
+        width: 1,
+      }),
+
+      fill: new Fill({
+        color: 'rgba(255, 0, 0, 0.1)',
+      }),
+    }),
+
+    'Polygon': new Style({
+      stroke: new Stroke({
+        color: 'red',
+        lineDash: [4],
+        width: 3,
+      })}
+    )
+  }
+
   const projection = new Projection({
     code: 'EPSG:25832',
     getPointResolution: (r) => {
@@ -84,13 +108,10 @@ export class MapComponent implements OnInit, AfterViewInit {
     units: 'm'
   })
 
-  const styleFunction = function (feature: any) {
-    // return styles[feature.getGeometry().getType()];
-    const customStyle = feature.get('secondaryStyles');
-    return customStyle || styles[feature.getGeometry().getType()];
-  };
 
-  this.getFromObservable();
+  this.styleFunction =  (feature: any) => {
+    return styles[feature.getGeometry().getType()] || secondaryStyles[feature.getGeometry().getType()];
+  }
 
   this.vectorSource = new VectorSource({
     features: new GeoJSON().readFeatures(this.geojsonObject, { featureProjection: 'EPSG:3857' })
@@ -98,7 +119,7 @@ export class MapComponent implements OnInit, AfterViewInit {
 
   const vectorLayer = new VectorLayer({
     source: this.vectorSource,
-    style: styleFunction,
+    style: this.styleFunction,
   });
 
   this.map = new Map({
@@ -121,7 +142,19 @@ export class MapComponent implements OnInit, AfterViewInit {
 
   }, 3000);
 
-  this.clickedElement = fromEvent(this.element.nativeElement, 'click').subscribe((event: any) => {
+  this.getFromObservable();
+
+  this.getStyles();
+
+}
+
+  getFromObservable() {
+    this._singlegrave$.subscribe((data) => {
+      this.geojsonObject = data;
+    })
+  }
+
+  getStyles() {
     const secondaryStyles: any = { 'MultiPolygon': new Style({
       stroke: new Stroke({
         color: 'red',
@@ -141,29 +174,20 @@ export class MapComponent implements OnInit, AfterViewInit {
       })}
     )
   }
-  this.mapService.getAllGravesById('440d1500-d5d5-4bf9-bf06-7725cf17170f').pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<any>) => {
-    res.data.features.forEach((sec: any, i: any) => {
-      debugger
-      const date = new Date(res.data.features[i].properties.nutzungsfristende)
-      const today = new Date();
-      if(date > today) {
-        // this.expiredGrave = res.data
-        let features = this.vectorSource.getFeatures();
-        features[i].set('secondaryStyles', secondaryStyles)
-      }
-      else {
-        return;
-      }
-    });
-  })
-  // this.getGraveExpiry('440d1500-d5d5-4bf9-bf06-7725cf17170f')
-})
-
-}
-
-getFromObservable() {
-  this._singlegrave$.subscribe((data) => {
-    this.geojsonObject = data;
+  this.clickedElement = fromEvent(this.element.nativeElement, 'click').subscribe((event: any) => {
+    debugger
+    this.mapService.getAllGravesById('440d1500-d5d5-4bf9-bf06-7725cf17170f').pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<any>) => {
+      res.data.features.forEach((style: any, i: any) => {
+        debugger
+        const date = new Date(res.data.features[i].properties.nutzungsfristende)
+        const today = new Date();
+        if(date > today) {
+          let features = this.vectorSource.getFeatures();
+          features[i].set('secondaryStyles', secondaryStyles);
+          // res.data.features[i].setStyle(this.secondaryStyles);
+        }
+      });
+    })
   })
 }
 
