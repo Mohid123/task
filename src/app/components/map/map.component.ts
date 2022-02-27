@@ -80,7 +80,7 @@ export class MapComponent implements OnInit, AfterViewInit {
       )
     }
 
-    const secondaryStyles: any = { 'MultiPolygon': new Style({
+    this.secondaryStyles = { 'MultiPolygon': new Style({
       stroke: new Stroke({
         color: 'red',
         width: 1,
@@ -110,7 +110,7 @@ export class MapComponent implements OnInit, AfterViewInit {
 
 
   this.styleFunction =  (feature: any) => {
-    return styles[feature.getGeometry().getType()] || secondaryStyles[feature.getGeometry().getType()];
+    return styles[feature.getGeometry().getType()] || this.secondaryStyles[feature.getGeometry().getType()];
   }
 
   this.vectorSource = new VectorSource({
@@ -155,25 +155,6 @@ export class MapComponent implements OnInit, AfterViewInit {
   }
 
   getStyles() {
-    const secondaryStyles: any = { 'MultiPolygon': new Style({
-      stroke: new Stroke({
-        color: 'red',
-        width: 1,
-      }),
-
-      fill: new Fill({
-        color: 'rgba(255, 0, 0, 0.1)',
-      }),
-    }),
-
-    'Polygon': new Style({
-      stroke: new Stroke({
-        color: 'red',
-        lineDash: [4],
-        width: 3,
-      })}
-    )
-  }
   this.clickedElement = fromEvent(this.element.nativeElement, 'click').subscribe((event: any) => {
     debugger
     this.mapService.getAllGravesById('440d1500-d5d5-4bf9-bf06-7725cf17170f').pipe(takeUntil(this.destroy$)).subscribe((res: ApiResponse<any>) => {
@@ -182,9 +163,7 @@ export class MapComponent implements OnInit, AfterViewInit {
         const date = new Date(res.data.features[i].properties.nutzungsfristende)
         const today = new Date();
         if(date > today) {
-          let features = this.vectorSource.getFeatures();
-          features[i].set('secondaryStyles', secondaryStyles);
-          // res.data.features[i].setStyle(this.secondaryStyles);
+          return this.secondaryStyles[res.data.features[i].geometry.type];
         }
       });
     })
